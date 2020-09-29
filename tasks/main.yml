@@ -1,0 +1,12 @@
+---
+- name: CA SETUP |  Check prerequirments
+  import_tasks: _prechecks.yml
+
+- name: CA SETUP |  Install requirments
+  import_tasks: install_requirments.yml
+
+- name: CA SETUP |  Configure CA
+  import_tasks: configure_ca.yml
+
+- name: CA SETUP |  Setup CA
+  import_tasks: generate_ca.yml

@@ -1,0 +1,64 @@
+---
+- name: CA SETUP |  Create CA privatekey
+  openssl_privatekey:
+    backup: yes
+    mode: 0600
+    owner: root
+    cipher: auto
+    passphrase: "{{ ca_privatekey_password }}"
+    path: "{{ ca_dir }}/private/cakey.pem"
+
+- name: CA SETUP |  Create CA csr
+  openssl_csr:
+    basic_constraints_critical: yes
+    basic_constraints: [CA:TRUE,]
+      #crlDistributionPoints="URI:http://{{ ansible_default_ipv4.address }}/ca.crl"]
+    path: "{{ ca_dir }}/csr/ca.csr"
+    privatekey_path: "{{ ca_dir }}/private/cakey.pem"
+    privatekey_passphrase: "{{ ca_privatekey_password }}"
+    common_name: "{{ ansible_default_ipv4.address }}"
+    country_name: "{{ ca.country }}"
+    organization_name: "{{ ca.org }}"
+    organizational_unit_name: "{{ ca.ou }}"
+    email_address: "{{ ca.email }}"
+
+- name: CA SETUP |  Sign CA cert
+  openssl_certificate:
+    path: "{{ ca_dir }}/cacert.pem"
+    provider: selfsigned
+    backup: yes
+    privatekey_path: "{{ ca_dir }}/private/cakey.pem"
+    privatekey_passphrase: "{{ ca_privatekey_password }}"
+    csr_path: "{{ ca_dir }}/csr/ca.csr" 
+    mode: 0600
+    owner: root
+
+- name: CA SETUP |  Register CA cert hash
+  shell: openssl x509 -noout -hash -in ./cacert.pem
+  register: cacert_hash
+  args:
+    chdir: "{{ ca_dir }}"
+
+- name: CA SETUP | Fetch CAcert
+  fetch:
+    src: "{{ ca_dir }}/cacert.pem"
+    dest: "{{ ansible_transfer_dir }}"
+    flat: yes
+
+- name: CA SETUP |  Create CAcert link
+  file:
+    src: "{{ ca_dir }}/cacert.pem"
+    dest: "{{ ca_dir }}/{{cacert_hash.stdout}}.0"
+    state: link
+
+- name: CA SETUP |  Create crl.pem
+  shell: openssl ca -config openssl.cnf -passin pass:{{ ca_privatekey_password }} -gencrl -out crl.pem
+  args:
+    chdir: "{{ ca_dir }}"
+    creates: "crl.pem"
+
+- name: CA SETUP |  Create CRL link
+  file:
+    src: "{{ ca_dir }}/crl.pem"
+    dest: "{{ ca_dir }}/crl/{{cacert_hash.stdout}}.r0"
+    state: link

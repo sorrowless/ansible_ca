@@ -1,0 +1,12 @@
+---
+
+ca_dir: /opt/syslog_ca
+ca_privatekey_password: some_long_password
+
+ca:
+  country: RU
+  province: MSK
+  city: Moscow
+  org: BIG
+  ou: DevOps
+  email: admin@localhost
