@@ -1,7 +1,10 @@
 ---
-
+# Directory to store CA info in
 ca_dir: /opt/syslog_ca
+# Pass for CA private
 ca_privatekey_password: some_long_password
+# Dir on localhost to save CA cert in
+ansible_transfer_dir: /tmp/ansible_ca
 
 ca:
   country: RU

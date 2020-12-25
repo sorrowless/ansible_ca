@@ -1,31 +1,29 @@
 ---
-- name: CA SETUP |  Copy to openssl config
-  copy:
-    src: "/etc/ssl/openssl.cnf"
+- name: Copy to openssl config
+  template:
+    src: openssl.cnf
     dest: "{{ ca_dir }}/openssl.cnf"
+    mode: 0644
+    owner: root
+    group: root
 
-- name: CA SETUP |  Change default CA dir
-  lineinfile:
-    path: "{{ ca_dir }}/openssl.cnf"
-    firstmatch: yes
-    insertafter: '[ CA_default ]'
-    regexp: '^dir'
-    line: 'dir             = .'
-
-- name: CA SETUP |  Create serial
+- name: Create serial
   shell: echo "01" > serial
   args:
     chdir: "{{ ca_dir }}"
     creates: serial
 
-- name: CA SETUP |  Create index.txt
-  shell: touch index.txt
-  args:
-    chdir: "{{ ca_dir }}"
-    creates: index.txt
+- name: Create index.txt
+  file:
+    path: "{{ ca_dir }}/index.txt"
+    state: touch
+    mode: 0644
+    owner: root
+    group: root
+  changed_when: false
 
-- name: CA SETUP |  Create crlnumber
-  shell: echo 1000 > ./crlnumber
+- name: Create crlnumber
+  shell: echo 01 > ./crl/crlnumber
   args:
     chdir: "{{ ca_dir }}"
-    creates: crlnumber
+    creates: "{{ ca_dir }}/crl/crlnumber"

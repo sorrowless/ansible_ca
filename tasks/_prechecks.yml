@@ -1,15 +1,15 @@
 ---
-- name: CA SETUP |  OS type
+- name: Check OS type
   fail:
     msg: "Sorry, your OS type is not supported"
   when: ansible_distribution != "Ubuntu"
 
-- name: CA SETUP |  Ensure CA dir
+- name: Ensure CA dir
   file:
     path: "{{ item }}"
-    mode: 0777
     owner: root
     group: root
+    mode: 0750
     state: directory
   with_items:
     - "{{ ca_dir }}/certs/"
