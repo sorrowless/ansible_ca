@@ -11,7 +11,7 @@
 - name: Create CA csr
   openssl_csr:
     basic_constraints_critical: yes
-    basic_constraints: [CA:TRUE]
+    basic_constraints: ["CA:TRUE"]
     # crlDistributionPoints="URI:http://{{ ansible_default_ipv4.address }}/ca.crl"]
     path: "{{ ca_dir }}/csr/ca.csr"
     privatekey_path: "{{ ca_dir }}/private/cakey.pem"
