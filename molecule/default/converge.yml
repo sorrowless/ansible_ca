@@ -1,0 +1,16 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+
+  vars:
+    ca_dir: /opt/syslog_ca
+
+  pre_tasks:
+    - name: Update apt cache.
+      apt: update_cache=true cache_valid_time=600
+      changed_when: false
+      when: ansible_os_family == 'Debian'
+
+  roles:
+    - role: ca
