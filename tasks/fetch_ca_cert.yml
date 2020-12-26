@@ -1,0 +1,13 @@
+---
+- name: Ensure local CA dir
+  delegate_to: localhost
+  file:
+    path: "{{ local_ca_cert_dir }}"
+    mode: 0750
+    state: directory
+
+- name: Fetch certs
+  fetch:
+    src: "{{ ca_cert }}"
+    dest: "{{ local_ca_cert_dir }}/"
+    flat: yes

@@ -1,10 +1,10 @@
 ---
 - name: Converge
   hosts: all
-  become: true
 
   vars:
     ca_dir: /opt/syslog_ca
+    fetch_ca_cert: true
 
   pre_tasks:
     - name: Update apt cache.

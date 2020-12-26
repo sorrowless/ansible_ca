@@ -10,3 +10,7 @@
 
 - name: Setup CA
   import_tasks: generate_ca.yml
+
+- name: Fetch CA certificate
+  import_tasks: fetch_ca_cert.yml
+  when: fetch_ca_cert
