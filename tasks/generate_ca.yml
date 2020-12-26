@@ -6,7 +6,7 @@
     owner: root
     cipher: auto
     passphrase: "{{ ca_privatekey_password }}"
-    path: "{{ keys_dir }}/cakey.pem"
+    path: "{{ ca_key }}"
 
 - name: Create CA csr
   openssl_csr:
@@ -14,7 +14,7 @@
     basic_constraints: ["CA:TRUE"]
     # crlDistributionPoints="URI:http://{{ ansible_default_ipv4.address }}/ca.crl"]
     path: "{{ csr_dir }}/ca.csr"
-    privatekey_path: "{{ keys_dir }}cakey.pem"
+    privatekey_path: "{{ ca_key }}"
     privatekey_passphrase: "{{ ca_privatekey_password }}"
     common_name: "{{ ansible_default_ipv4.address }}"
     country_name: "{{ ca.country }}"
@@ -24,23 +24,23 @@
 
 - name: Sign CA cert
   openssl_certificate:
-    path: "{{ certs_dir }}/cacert.pem"
+    path: "{{ ca_cert }}"
     provider: selfsigned
     backup: yes
-    privatekey_path: "{{ keys_dir }}cakey.pem"
+    privatekey_path: "{{ ca_key }}"
     privatekey_passphrase: "{{ ca_privatekey_password }}"
     csr_path: "{{ csr_dir }}/ca.csr"
     mode: 0600
     owner: root
 
 - name: Register CA cert hash
-  command: "openssl x509 -noout -hash -in {{ certs_dir }}/cacert.pem"
+  command: "openssl x509 -noout -hash -in {{ ca_cert }}"
   register: cacert_hash
   changed_when: false
 
 - name: Create CAcert link
   file:
-    src: "{{ certs_dir }}/cacert.pem"
+    src: "{{ ca_cert }}"
     dest: "{{ certs_dir }}/{{ cacert_hash.stdout }}.0"
     state: link
 
