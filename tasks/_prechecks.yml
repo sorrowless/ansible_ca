@@ -12,7 +12,7 @@
     mode: 0750
     state: directory
   with_items:
-    - "{{ ca_dir }}/certs/"
-    - "{{ ca_dir }}/crl/"
-    - "{{ ca_dir }}/csr/"
-    - "{{ ca_dir }}/private/"
+    - "{{ certs_dir }}"
+    - "{{ crl_dir }}"
+    - "{{ csr_dir }}"
+    - "{{ keys_dir }}"

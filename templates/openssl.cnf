@@ -29,13 +29,13 @@ default_ca = own_ca
 
 [ own_ca ]
 dir = {{ ca_dir }}
-new_certs_dir = ${dir}/certs
-private_key = ${dir}/private/cakey.pem
-certificate = ${dir}/certs/cacert.pem
-database = ${dir}/certs/certs.db
+new_certs_dir = {{ certs_dir }}
+private_key = {{ keys_dir }}/cakey.pem
+certificate = {{ certs_dir }}/cacert.pem
+database = {{ certs_dir }}/certs.db
 serial = ${dir}/serial
 unique_subject = no
 default_md = sha1
 default_days = 3650
 default_crl_days = 3650
-crlnumber = ${dir}/crl/crlnumber
+crlnumber = {{ crl_dir }}/crlnumber

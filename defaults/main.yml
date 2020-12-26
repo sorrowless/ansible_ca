@@ -5,6 +5,10 @@ ca_dir: /opt/syslog_ca
 ca_privatekey_password: some_long_password
 # Dir on localhost to save CA cert in
 ansible_transfer_dir: /tmp/ansible_ca
+certs_dir: "{{ ca_dir }}/certs/"
+crl_dir: "{{ ca_dir }}/crl/"
+csr_dir: "{{ ca_dir }}/csr/"
+keys_dir: "{{ ca_dir }}/private/"
 
 ca:
   country: RU

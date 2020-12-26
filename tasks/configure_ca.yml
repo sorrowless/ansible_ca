@@ -23,7 +23,6 @@
   changed_when: false
 
 - name: Create crlnumber
-  shell: echo 01 > ./crl/crlnumber
+  shell: echo 01 > {{ crl_dir }}/crlnumber
   args:
-    chdir: "{{ ca_dir }}"
-    creates: "{{ ca_dir }}/crl/crlnumber"
+    creates: "{{ crl_dir }}/crlnumber"

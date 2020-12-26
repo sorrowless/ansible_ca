@@ -6,15 +6,15 @@
     owner: root
     cipher: auto
     passphrase: "{{ ca_privatekey_password }}"
-    path: "{{ ca_dir }}/private/cakey.pem"
+    path: "{{ keys_dir }}/cakey.pem"
 
 - name: Create CA csr
   openssl_csr:
     basic_constraints_critical: yes
     basic_constraints: ["CA:TRUE"]
     # crlDistributionPoints="URI:http://{{ ansible_default_ipv4.address }}/ca.crl"]
-    path: "{{ ca_dir }}/csr/ca.csr"
-    privatekey_path: "{{ ca_dir }}/private/cakey.pem"
+    path: "{{ csr_dir }}/ca.csr"
+    privatekey_path: "{{ keys_dir }}cakey.pem"
     privatekey_passphrase: "{{ ca_privatekey_password }}"
     common_name: "{{ ansible_default_ipv4.address }}"
     country_name: "{{ ca.country }}"
@@ -24,26 +24,24 @@
 
 - name: Sign CA cert
   openssl_certificate:
-    path: "{{ ca_dir }}/certs/cacert.pem"
+    path: "{{ certs_dir }}/cacert.pem"
     provider: selfsigned
     backup: yes
-    privatekey_path: "{{ ca_dir }}/private/cakey.pem"
+    privatekey_path: "{{ keys_dir }}cakey.pem"
     privatekey_passphrase: "{{ ca_privatekey_password }}"
-    csr_path: "{{ ca_dir }}/csr/ca.csr"
+    csr_path: "{{ csr_dir }}/ca.csr"
     mode: 0600
     owner: root
 
 - name: Register CA cert hash
-  command: openssl x509 -noout -hash -in ./certs/cacert.pem
+  command: "openssl x509 -noout -hash -in {{ certs_dir }}/cacert.pem"
   register: cacert_hash
-  args:
-    chdir: "{{ ca_dir }}"
   changed_when: false
 
 - name: Create CAcert link
   file:
-    src: "{{ ca_dir }}/certs/cacert.pem"
-    dest: "{{ ca_dir }}/certs/{{ cacert_hash.stdout }}.0"
+    src: "{{ certs_dir }}/cacert.pem"
+    dest: "{{ certs_dir }}/{{ cacert_hash.stdout }}.0"
     state: link
 
 - name: Ensure crl list
@@ -54,18 +52,21 @@
     owner: root
     group: root
   with_items:
-    - "{{ ca_dir }}/certs/certs.db"
-    - "{{ ca_dir }}/certs/certs.db.attr"
+    - "{{ certs_dir }}/certs.db"
+    - "{{ certs_dir }}/certs.db.attr"
   changed_when: false
 
 - name: Create crl.pem
-  command: openssl ca -config openssl.cnf -passin pass:{{ ca_privatekey_password }} -gencrl -out crl/crl.pem
+  shell:
+    cmd: |
+      openssl ca -config {{ ca_dir }}/openssl.cnf \
+        -passin pass:{{ ca_privatekey_password }} -gencrl \
+        -out {{ crl_dir }}/crl.pem
   args:
-    chdir: "{{ ca_dir }}"
-    creates: "{{ ca_dir }}/crl/crl.pem"
+    creates: "{{ crl_dir }}/crl.pem"
 
 - name: Create CRL link
   file:
-    src: "{{ ca_dir }}/crl/crl.pem"
-    dest: "{{ ca_dir }}/crl/{{ cacert_hash.stdout }}.r0"
+    src: "{{ crl_dir }}/crl.pem"
+    dest: "{{ crl_dir }}/{{ cacert_hash.stdout }}.r0"
     state: link
