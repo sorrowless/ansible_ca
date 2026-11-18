@@ -1,11 +1,12 @@
 ---
-- name: Ensure needed packages
-  package:
+- name: Ensure packages required by the CA
+  ansible.builtin.package:
     name:
       - openssl
-      - syslog-ng
+      - python3-cryptography
     state: present
-  register: task_result
-  until: task_result is success
+    update_cache: true
+  register: ca_package_result
+  until: ca_package_result is success
   retries: 10
   delay: 2

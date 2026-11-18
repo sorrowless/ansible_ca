@@ -1,0 +1,6 @@
+---
+roles: []
+
+collections:
+  - name: community.crypto
+    version: ">=2.22.0,<3.0.0"

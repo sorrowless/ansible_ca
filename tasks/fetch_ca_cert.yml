@@ -1,13 +1,14 @@
 ---
-- name: Ensure local CA dir
-  delegate_to: localhost
-  file:
+- name: Ensure local CA directory on the controller
+  ansible.builtin.file:
     path: "{{ local_ca_cert_dir }}"
-    mode: 0750
+    mode: "0750"
     state: directory
+  delegate_to: localhost
+  become: false
 
-- name: Fetch certs
-  fetch:
+- name: Fetch CA certificate to the controller
+  ansible.builtin.fetch:
     src: "{{ ca_cert }}"
     dest: "{{ local_ca_cert_dir }}/"
-    flat: yes
+    flat: true

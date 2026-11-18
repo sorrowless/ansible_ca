@@ -1,72 +1,84 @@
 ---
-- name: Create CA privatekey
-  openssl_privatekey:
-    backup: yes
-    mode: 0600
-    owner: root
-    cipher: auto
-    passphrase: "{{ ca_privatekey_password }}"
+- name: Create CA private key
+  community.crypto.openssl_privatekey:
     path: "{{ ca_key }}"
+    size: "{{ ca_key_size }}"
+    type: RSA
+    passphrase: "{{ ca_privatekey_password }}"
+    mode: "0600"
+    owner: root
+    group: root
+    backup: true
+  no_log: true
 
-- name: Create CA csr
-  openssl_csr:
-    basic_constraints_critical: yes
-    basic_constraints: ["CA:TRUE"]
-    # crlDistributionPoints="URI:http://{{ ansible_default_ipv4.address }}/ca.crl"]
+- name: Create CA certificate signing request
+  community.crypto.openssl_csr:
     path: "{{ csr_dir }}/ca.csr"
     privatekey_path: "{{ ca_key }}"
     privatekey_passphrase: "{{ ca_privatekey_password }}"
-    common_name: "{{ ansible_default_ipv4.address }}"
+    common_name: "{{ ca.common_name }}"
     country_name: "{{ ca.country }}"
+    state_or_province_name: "{{ ca.province }}"
+    locality_name: "{{ ca.city }}"
     organization_name: "{{ ca.org }}"
     organizational_unit_name: "{{ ca.ou }}"
     email_address: "{{ ca.email }}"
+    basic_constraints:
+      - CA:TRUE
+    basic_constraints_critical: true
+    key_usage:
+      - keyCertSign
+      - cRLSign
+    key_usage_critical: true
+    mode: "0644"
+    owner: root
+    group: root
+  no_log: true
 
-- name: Sign CA cert
-  openssl_certificate:
+- name: Sign CA certificate
+  community.crypto.x509_certificate:
     path: "{{ ca_cert }}"
     provider: selfsigned
-    backup: yes
+    selfsigned_digest: sha256
+    selfsigned_not_after: "+{{ ca_days }}d"
     privatekey_path: "{{ ca_key }}"
     privatekey_passphrase: "{{ ca_privatekey_password }}"
     csr_path: "{{ csr_dir }}/ca.csr"
-    mode: 0600
-    owner: root
-
-- name: Register CA cert hash
-  command: "openssl x509 -noout -hash -in {{ ca_cert }}"
-  register: cacert_hash
-  changed_when: false
-
-- name: Create CAcert link
-  file:
-    src: "{{ ca_cert }}"
-    dest: "{{ certs_dir }}/{{ cacert_hash.stdout }}.0"
-    state: link
-
-- name: Ensure crl list
-  file:
-    path: "{{ item }}"
-    mode: 0644
-    state: touch
+    mode: "0644"
     owner: root
     group: root
-  with_items:
-    - "{{ certs_dir }}/certs.db"
-    - "{{ certs_dir }}/certs.db.attr"
+    backup: true
+  no_log: true
+
+- name: Register CA certificate hash
+  ansible.builtin.command:
+    cmd: openssl x509 -noout -hash -in {{ ca_cert }}
+  register: ca_cert_hash
   changed_when: false
 
-- name: Create crl.pem
-  shell:
-    cmd: |
-      openssl ca -config {{ ca_dir }}/openssl.cnf \
-        -passin pass:{{ ca_privatekey_password }} -gencrl \
-        -out {{ crl_dir }}/crl.pem
-  args:
-    creates: "{{ crl_dir }}/crl.pem"
-
-- name: Create CRL link
-  file:
-    src: "{{ crl_dir }}/crl.pem"
-    dest: "{{ crl_dir }}/{{ cacert_hash.stdout }}.r0"
+- name: Create CA certificate hash link
+  ansible.builtin.file:
+    src: "{{ ca_cert }}"
+    dest: "{{ certs_dir }}/{{ ca_cert_hash.stdout }}.0"
     state: link
+    force: true
+
+- name: Create CRL
+  ansible.builtin.command:
+    cmd: >-
+      openssl ca
+      -config {{ ca_openssl_config }}
+      -passin env:CA_PASS
+      -gencrl
+      -out {{ crl_dir }}/crl.pem
+    creates: "{{ crl_dir }}/crl.pem"
+  environment:
+    CA_PASS: "{{ ca_privatekey_password }}"
+  no_log: true
+
+- name: Create CRL hash link
+  ansible.builtin.file:
+    src: "{{ crl_dir }}/crl.pem"
+    dest: "{{ crl_dir }}/{{ ca_cert_hash.stdout }}.r0"
+    state: link
+    force: true

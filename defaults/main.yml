@@ -1,17 +1,32 @@
 ---
-# Directory to store CA info in
+# Directory to store CA materials on the remote host
 ca_dir: /opt/syslog_ca
-# Pass for CA private
-ca_privatekey_password: some_long_password
-# Dir on localhost to save CA cert in
-ansible_transfer_dir: /tmp/ansible_ca
-certs_dir: "{{ ca_dir }}/certs/"
+
+# Required. Passphrase protecting the CA private key.
+# Leave empty to fail the role intentionally; set via vault or host vars.
+ca_privatekey_password: ""
+
+# CA certificate validity in days
+ca_days: 3650
+
+# Default validity for certificates signed with this CA (days)
+ca_default_days: 3650
+
+# Default CRL validity in days
+ca_crl_days: 3650
+
+# RSA key size for the CA private key
+ca_key_size: 4096
+
+certs_dir: "{{ ca_dir }}/certs"
 ca_cert: "{{ certs_dir }}/cacert.pem"
-crl_dir: "{{ ca_dir }}/crl/"
-csr_dir: "{{ ca_dir }}/csr/"
-keys_dir: "{{ ca_dir }}/private/"
+crl_dir: "{{ ca_dir }}/crl"
+csr_dir: "{{ ca_dir }}/csr"
+keys_dir: "{{ ca_dir }}/private"
 ca_key: "{{ keys_dir }}/cakey.pem"
-# In case you need to have CA certificate locally
+ca_openssl_config: "{{ ca_dir }}/openssl.cnf"
+
+# Fetch the CA certificate to the Ansible controller
 fetch_ca_cert: true
 local_ca_cert_dir: /tmp/ca_dir
 
@@ -22,3 +37,10 @@ ca:
   org: BIG
   ou: DevOps
   email: admin@localhost
+  common_name: Syslog CA
+
+# Ubuntu releases supported by this role
+ca_supported_versions:
+  - "22.04"
+  - "24.04"
+  - "26.04"

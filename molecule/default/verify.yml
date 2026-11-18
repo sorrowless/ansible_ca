@@ -1,0 +1,201 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    ca_dir: /opt/syslog_ca
+    certs_dir: "{{ ca_dir }}/certs"
+    crl_dir: "{{ ca_dir }}/crl"
+    csr_dir: "{{ ca_dir }}/csr"
+    keys_dir: "{{ ca_dir }}/private"
+    ca_cert: "{{ certs_dir }}/cacert.pem"
+    ca_key: "{{ keys_dir }}/cakey.pem"
+    ca_openssl_config: "{{ ca_dir }}/openssl.cnf"
+    ca_privatekey_password: molecule-test-passphrase
+    local_ca_cert_dir: /tmp/molecule_ca_dir
+
+  tasks:
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: auto
+
+    - name: Assert required packages are installed
+      ansible.builtin.assert:
+        that:
+          - "'openssl' in ansible_facts.packages"
+          - "'python3-cryptography' in ansible_facts.packages"
+        fail_msg: Required CA packages are missing
+
+    - name: Assert syslog-ng was not installed by this role
+      ansible.builtin.assert:
+        that:
+          - "'syslog-ng' not in ansible_facts.packages"
+        fail_msg: syslog-ng must not be installed by the CA role
+
+    - name: Stat CA directories and files
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ ca_dir }}"
+        - "{{ certs_dir }}"
+        - "{{ crl_dir }}"
+        - "{{ csr_dir }}"
+        - "{{ keys_dir }}"
+        - "{{ ca_key }}"
+        - "{{ ca_cert }}"
+        - "{{ crl_dir }}/crl.pem"
+        - "{{ ca_openssl_config }}"
+      register: ca_paths
+
+    - name: Assert CA paths exist
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+      loop: "{{ ca_paths.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Assert directory modes
+      ansible.builtin.assert:
+        that:
+          - item.stat.isdir
+          - item.stat.mode == '0750'
+      loop: "{{ ca_paths.results }}"
+      when: item.item in [ca_dir, certs_dir, crl_dir, csr_dir, keys_dir]
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Assert private key mode
+      ansible.builtin.assert:
+        that:
+          - ca_paths.results | selectattr('item', 'equalto', ca_key) | map(attribute='stat.mode') | first == '0600'
+
+    - name: Assert CA certificate mode
+      ansible.builtin.assert:
+        that:
+          - ca_paths.results | selectattr('item', 'equalto', ca_cert) | map(attribute='stat.mode') | first == '0644'
+
+    - name: Verify CA certificate against itself
+      ansible.builtin.command:
+        cmd: openssl verify -CAfile {{ ca_cert }} {{ ca_cert }}
+      register: ca_verify
+      changed_when: false
+
+    - name: Assert openssl verify succeeded
+      ansible.builtin.assert:
+        that:
+          - "'OK' in ca_verify.stdout"
+
+    - name: Read CA certificate text
+      ansible.builtin.command:
+        cmd: openssl x509 -in {{ ca_cert }} -noout -text
+      register: ca_cert_text
+      changed_when: false
+
+    - name: Assert CA certificate properties
+      ansible.builtin.assert:
+        that:
+          - "'CA:TRUE' in ca_cert_text.stdout"
+          - "'Certificate Sign' in ca_cert_text.stdout or 'Key Cert Sign' in ca_cert_text.stdout"
+          - "'CRL Sign' in ca_cert_text.stdout"
+          - "'sha256WithRSAEncryption' in ca_cert_text.stdout"
+        fail_msg: CA certificate is missing expected extensions or digest
+
+    - name: Read CRL
+      ansible.builtin.command:
+        cmd: openssl crl -in {{ crl_dir }}/crl.pem -noout -text
+      register: crl_text
+      changed_when: false
+
+    - name: Assert CRL is readable
+      ansible.builtin.assert:
+        that:
+          - crl_text.rc == 0
+          - "'Certificate Revocation List' in crl_text.stdout"
+
+    - name: Register CA certificate hash
+      ansible.builtin.command:
+        cmd: openssl x509 -noout -hash -in {{ ca_cert }}
+      register: ca_cert_hash
+      changed_when: false
+
+    - name: Stat CA and CRL hash links
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ certs_dir }}/{{ ca_cert_hash.stdout }}.0"
+        - "{{ crl_dir }}/{{ ca_cert_hash.stdout }}.r0"
+      register: hash_links
+
+    - name: Assert hash links exist
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+          - item.stat.islnk
+      loop: "{{ hash_links.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Create temporary test key for signing check
+      community.crypto.openssl_privatekey:
+        path: "{{ keys_dir }}/test-client.key"
+        size: 2048
+        mode: "0600"
+
+    - name: Create temporary test CSR
+      community.crypto.openssl_csr:
+        path: "{{ csr_dir }}/test-client.csr"
+        privatekey_path: "{{ keys_dir }}/test-client.key"
+        common_name: test-client.example.com
+        key_usage:
+          - digitalSignature
+          - keyEncipherment
+        extended_key_usage:
+          - clientAuth
+        mode: "0644"
+
+    - name: Sign temporary test certificate with the CA
+      ansible.builtin.command:
+        argv:
+          - openssl
+          - ca
+          - -config
+          - "{{ ca_openssl_config }}"
+          - -batch
+          - -extensions
+          - client_cert
+          - -in
+          - "{{ csr_dir }}/test-client.csr"
+          - -out
+          - "{{ certs_dir }}/test-client.pem"
+          - -passin
+          - env:CA_PASS
+      environment:
+        CA_PASS: "{{ ca_privatekey_password }}"
+      no_log: true
+
+    - name: Verify signed test certificate
+      ansible.builtin.command:
+        cmd: openssl verify -CAfile {{ ca_cert }} {{ certs_dir }}/test-client.pem
+      register: signed_verify
+      changed_when: false
+
+    - name: Assert signed certificate verifies
+      ansible.builtin.assert:
+        that:
+          - "'OK' in signed_verify.stdout"
+
+    - name: Stat fetched CA certificate on controller
+      ansible.builtin.stat:
+        path: "{{ local_ca_cert_dir }}/cacert.pem"
+      delegate_to: localhost
+      become: false
+      register: fetched_cert
+
+    - name: Assert CA certificate was fetched
+      ansible.builtin.assert:
+        that:
+          - fetched_cert.stat.exists
+          - fetched_cert.stat.size > 0

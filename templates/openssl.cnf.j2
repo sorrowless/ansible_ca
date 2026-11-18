@@ -1,0 +1,85 @@
+# OpenSSL configuration for the syslog TLS CA managed by this role.
+# Other roles can sign server/client CSRs with:
+#   openssl ca -config {{ ca_openssl_config }} -batch -extensions <server|client>_cert ...
+
+[ req ]
+default_bits           = {{ ca_key_size }}
+default_md             = sha256
+distinguished_name     = req_distinguished_name
+attributes             = req_attributes
+string_mask            = utf8only
+prompt                 = no
+
+[ req_distinguished_name ]
+countryName            = {{ ca.country }}
+stateOrProvinceName    = {{ ca.province }}
+localityName           = {{ ca.city }}
+0.organizationName     = {{ ca.org }}
+organizationalUnitName = {{ ca.ou }}
+commonName             = {{ ca.common_name }}
+emailAddress           = {{ ca.email }}
+
+[ req_attributes ]
+challengePassword              = A challenge password
+challengePassword_min          = 4
+challengePassword_max          = 20
+
+[ ca ]
+default_ca = own_ca
+
+[ own_ca ]
+dir               = {{ ca_dir }}
+certs             = {{ certs_dir }}
+new_certs_dir     = {{ certs_dir }}
+database          = {{ certs_dir }}/certs.db
+certificate       = {{ ca_cert }}
+serial            = {{ ca_dir }}/serial
+crlnumber         = {{ crl_dir }}/crlnumber
+crl               = {{ crl_dir }}/crl.pem
+private_key       = {{ ca_key }}
+RANDFILE          = {{ keys_dir }}/.rand
+default_md        = sha256
+default_days      = {{ ca_default_days }}
+default_crl_days  = {{ ca_crl_days }}
+policy            = policy_loose
+email_in_dn       = no
+copy_extensions   = copy
+name_opt          = ca_default
+cert_opt          = ca_default
+preserve          = no
+
+[ policy_loose ]
+countryName             = optional
+stateOrProvinceName     = optional
+localityName            = optional
+organizationName        = optional
+organizationalUnitName  = optional
+commonName              = supplied
+emailAddress            = optional
+
+[ v3_ca ]
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always,issuer
+basicConstraints       = critical, CA:TRUE
+keyUsage               = critical, keyCertSign, cRLSign
+
+[ server_cert ]
+basicConstraints       = CA:FALSE
+nsCertType             = server
+nsComment              = "OpenSSL Generated Server Certificate"
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid,issuer:always
+keyUsage               = critical, digitalSignature, keyEncipherment
+extendedKeyUsage       = serverAuth
+
+[ client_cert ]
+basicConstraints       = CA:FALSE
+nsCertType             = client, email
+nsComment              = "OpenSSL Generated Client Certificate"
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid,issuer:always
+keyUsage               = critical, nonRepudiation, digitalSignature, keyEncipherment
+extendedKeyUsage       = clientAuth, emailProtection
+
+[ crl_ext ]
+authorityKeyIdentifier = keyid:always

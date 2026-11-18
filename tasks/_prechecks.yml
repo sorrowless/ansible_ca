@@ -1,17 +1,32 @@
 ---
 - name: Check OS type
-  fail:
-    msg: "Sorry, your OS type is not supported"
+  ansible.builtin.fail:
+    msg: "Sorry, only Ubuntu is supported"
   when: ansible_distribution != "Ubuntu"
 
-- name: Ensure CA dir
-  file:
+- name: Check Ubuntu version
+  ansible.builtin.fail:
+    msg: >-
+      Ubuntu {{ ansible_distribution_version }} is not supported.
+      Supported versions: {{ ca_supported_versions | join(', ') }}
+  when: ansible_distribution_version not in ca_supported_versions
+
+- name: Require CA private key passphrase
+  ansible.builtin.fail:
+    msg: >-
+      ca_privatekey_password must be set (for example via ansible-vault
+      or host/group vars). The role does not ship a default passphrase.
+  when: ca_privatekey_password | length == 0
+
+- name: Ensure CA directories
+  ansible.builtin.file:
     path: "{{ item }}"
     owner: root
     group: root
-    mode: 0750
+    mode: "0750"
     state: directory
-  with_items:
+  loop:
+    - "{{ ca_dir }}"
     - "{{ certs_dir }}"
     - "{{ crl_dir }}"
     - "{{ csr_dir }}"

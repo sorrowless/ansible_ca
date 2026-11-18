@@ -1,28 +1,44 @@
 ---
-- name: Copy to openssl config
-  template:
-    src: openssl.cnf
-    dest: "{{ ca_dir }}/openssl.cnf"
-    mode: 0644
+- name: Deploy openssl CA configuration
+  ansible.builtin.template:
+    src: openssl.cnf.j2
+    dest: "{{ ca_openssl_config }}"
+    mode: "0644"
     owner: root
     group: root
 
-- name: Create serial
-  shell: echo "01" > serial
-  args:
-    chdir: "{{ ca_dir }}"
-    creates: serial
-
-- name: Create index.txt
-  file:
-    path: "{{ ca_dir }}/index.txt"
-    state: touch
-    mode: 0644
+- name: Create CA serial file
+  ansible.builtin.copy:
+    content: "01\n"
+    dest: "{{ ca_dir }}/serial"
+    mode: "0644"
     owner: root
     group: root
-  changed_when: false
+    force: false
 
-- name: Create crlnumber
-  shell: echo 01 > {{ crl_dir }}/crlnumber
-  args:
-    creates: "{{ crl_dir }}/crlnumber"
+- name: Create certificate database
+  ansible.builtin.copy:
+    content: ""
+    dest: "{{ certs_dir }}/certs.db"
+    mode: "0644"
+    owner: root
+    group: root
+    force: false
+
+- name: Create certificate database attributes
+  ansible.builtin.copy:
+    content: "unique_subject = no\n"
+    dest: "{{ certs_dir }}/certs.db.attr"
+    mode: "0644"
+    owner: root
+    group: root
+    force: false
+
+- name: Create CRL number file
+  ansible.builtin.copy:
+    content: "01\n"
+    dest: "{{ crl_dir }}/crlnumber"
+    mode: "0644"
+    owner: root
+    group: root
+    force: false

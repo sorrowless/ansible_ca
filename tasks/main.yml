@@ -1,16 +1,16 @@
 ---
-- name: Check prerequirments
-  import_tasks: _prechecks.yml
+- name: Check prerequisites
+  ansible.builtin.import_tasks: _prechecks.yml
 
-- name: Install requirments
-  import_tasks: install_requirements.yml
+- name: Install requirements
+  ansible.builtin.import_tasks: install_requirements.yml
 
 - name: Configure CA
-  import_tasks: configure_ca.yml
+  ansible.builtin.import_tasks: configure_ca.yml
 
 - name: Setup CA
-  import_tasks: generate_ca.yml
+  ansible.builtin.import_tasks: generate_ca.yml
 
 - name: Fetch CA certificate
-  import_tasks: fetch_ca_cert.yml
-  when: fetch_ca_cert
+  ansible.builtin.import_tasks: fetch_ca_cert.yml
+  when: fetch_ca_cert | bool

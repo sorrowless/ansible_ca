@@ -1,22 +1,31 @@
 ---
 galaxy_info:
-  author: Stan Bogatkin
-  description: Ansible role to install openssl CA
-  company: Personal project
   role_name: ca
-
-  license: Apache
-
-  min_ansible_version: 2.4
+  namespace: sorrowless
+  author: Stan Bogatkin
+  description: >-
+    Ansible role that bootstraps an OpenSSL certificate authority for TLS
+    syslog (for example syslog-ng). Does not install or configure syslog-ng.
+  company: Personal project
+  license: Apache-2.0
+  min_ansible_version: "2.16"
 
   platforms:
     - name: Ubuntu
       versions:
-        - bionic
-        - focal
+        - jammy
+        - noble
+        - resolute
 
-  galaxy_tags: [openssl, ca, authority, certificates]
+  galaxy_tags:
+    - openssl
+    - ca
+    - authority
+    - certificates
+    - tls
+    - syslog
 
 dependencies: []
-# List your role dependencies here, one per line. Be sure to remove the '[]' above,
-# if you add dependencies to this list.
+
+collections:
+  - community.crypto

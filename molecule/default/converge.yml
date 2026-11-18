@@ -1,16 +1,21 @@
 ---
 - name: Converge
   hosts: all
+  become: true
 
   vars:
     ca_dir: /opt/syslog_ca
     fetch_ca_cert: true
+    local_ca_cert_dir: /tmp/molecule_ca_dir
+    ca_privatekey_password: molecule-test-passphrase
 
   pre_tasks:
-    - name: Update apt cache.
-      apt: update_cache=true cache_valid_time=600
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 600
       changed_when: false
-      when: ansible_os_family == 'Debian'
+      when: ansible_os_family == "Debian"
 
   roles:
-    - role: ca
+    - role: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') | basename }}"

@@ -1,0 +1,19 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Wait for apt locks to clear
+      ansible.builtin.raw: |
+        while fuser /var/lib/dpkg/lock >/dev/null 2>&1 \
+           || fuser /var/lib/apt/lists/lock >/dev/null 2>&1 \
+           || fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+          sleep 1
+        done
+      changed_when: false
+
+    - name: Update apt cache
+      ansible.builtin.raw: apt-get update
+      changed_when: false
